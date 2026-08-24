@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QLabel, QLineEdit, QFileDialog,
     QMessageBox, QProgressBar, QTextEdit,
-    QGroupBox, QSplitter,
+    QGroupBox, QSplitter, QComboBox,
     QApplication, QTimeEdit
 )
 from PySide6.QtCore import Qt, QThread, Signal, QTime
@@ -64,7 +64,8 @@ class SaveThread(QThread):
                  start_date: datetime = None, 
                  time_start: str = "09:00", 
                  time_end: str = "24:00",
-                 selected_channels: list = None):
+                 selected_channels: list = None,
+                 sort_mode: str = "week"):
         super().__init__()
         self.data = data
         self.filename = filename
@@ -73,6 +74,7 @@ class SaveThread(QThread):
         self.time_start = time_start
         self.time_end = time_end
         self.selected_channels = selected_channels or []
+        self.sort_mode = sort_mode  # 'week', 'alphabet', 'channel'
     
     def run(self):
         try:
@@ -89,6 +91,23 @@ class SaveThread(QThread):
         except Exception as e:
             self.error.emit(str(e))
     
+    def _get_sorted_channels(self, programs: dict) -> list:
+        """Возвращает список каналов, отсортированных согласно выбранному режиму"""
+        config = self.data['config']
+        
+        # Получаем список каналов
+        channels = list(programs.keys())
+        
+        if self.sort_mode == "alphabet":
+            # Сортировка по алфавиту (по отображаемому имени)
+            channels.sort(key=lambda x: config.get_channel_name(x).lower())
+        elif self.sort_mode == "channel":
+            # Сортировка по номеру канала
+            channels.sort(key=lambda x: int(config.get_channel_number(x)) if config.get_channel_number(x) and config.get_channel_number(x).isdigit() else 9999)
+        # else: "week" - сохраняем порядок как в programs (из XML)
+        
+        return channels
+    
     def _get_filtered_programs(self):
         programs = self.data['all_programs']
         if self.selected_channels:
@@ -100,11 +119,17 @@ class SaveThread(QThread):
         config = self.data['config']
         parser = self.data['parser']
         
+        # Получаем отсортированный список каналов
+        sorted_channels = self._get_sorted_channels(programs)
+        
         with open(path, 'w', encoding='utf-8') as f:
             f.write("Start;Stop;Chanel;Num;Ctg;NameSer;Ratio\n")
             
-            for channel_id, prog_list in sorted(programs.items()):
-                # Получаем отображаемое название канала
+            for channel_id in sorted_channels:
+                prog_list = programs.get(channel_id, [])
+                if not prog_list:
+                    continue
+                    
                 display_name = config.get_channel_name(channel_id)
                 if not display_name or display_name == channel_id:
                     display_name = channel_id
@@ -117,10 +142,15 @@ class SaveThread(QThread):
                     stop = parser.format_time(prog.get('stop', ''))
                     title = prog.get('title', '').replace(';', ',')
                     rating = prog.get('rating', '')
-                    ctg = self._fix_category(parser.detect_category(title))
+                    ctg = prog.get('category', '')
+                    if ctg:
+                        ctg = self._fix_category(ctg)
                     rating = self._fix_rating(rating)
                     
-                    f.write(f"{start};{stop};{display_name};{channel_num};{ctg};{title};{rating}\n")
+                    if ctg:
+                        f.write(f"{start};{stop};{display_name};{channel_num};{ctg};{title};{rating}\n")
+                    else:
+                        f.write(f"{start};{stop};{display_name};{channel_num};;{title};{rating}\n")
     
     def _save_info_day(self, path: str):
         programs = self._get_filtered_programs()
@@ -144,11 +174,21 @@ class SaveThread(QThread):
         month_num = date.strftime('%m')
         date_display = f"{date.strftime('%d')} {months.get(month_num, '')}"
         
+        # Разрешенные категории для FD_info
+        allowed_categories = ['Х/ф', 'Т/с', 'М/ф', 'М/с']
+        
+        # Получаем отсортированный список каналов
+        sorted_channels = self._get_sorted_channels(programs)
+        
+        # Словарь для подсчета программ без рейтинга ТОЛЬКО среди разрешенных категорий
         channels_without_rating = {}
         
         with open(path, 'w', encoding='windows-1251') as f:
-            for channel_id, prog_list in sorted(programs.items()):
-                # Получаем отображаемое название канала
+            for channel_id in sorted_channels:
+                prog_list = programs.get(channel_id, [])
+                if not prog_list:
+                    continue
+                    
                 display_name = config.get_channel_name(channel_id)
                 if not display_name or display_name == channel_id:
                     display_name = channel_id
@@ -174,39 +214,63 @@ class SaveThread(QThread):
                 
                 filtered_progs.sort(key=lambda x: x.get('start', ''))
                 
-                for prog in filtered_progs:
-                    rating = prog.get('rating', '')
-                    if not rating or rating.strip() == '' or rating == '[]':
-                        if channel_id not in channels_without_rating:
-                            channels_without_rating[channel_id] = []
-                        title = prog.get('title', '')
-                        if title not in [p['title'] for p in channels_without_rating[channel_id]]:
-                            channels_without_rating[channel_id].append({
-                                'title': title,
-                                'time': prog.get('start', '')
-                            })
-                
                 prog_lines = []
                 for prog in filtered_progs:
                     time = self._format_time_for_info(prog.get('start', ''))
                     title = prog.get('title', '')
                     rating = prog.get('rating', '')
                     
-                    ctg = self._fix_category(parser.detect_category(title))
+                    ctg = prog.get('category', '')
+                    
+                    # Проверка: есть ли категория
+                    if not ctg:
+                        continue
+                    
+                    # Нормализуем категорию для сравнения
+                    ctg_normalized = ctg
+                    if ctg in ['Хф', 'Х/ф']:
+                        ctg_normalized = 'Х/ф'
+                    elif ctg in ['Тс', 'Т/с']:
+                        ctg_normalized = 'Т/с'
+                    elif ctg in ['Мф', 'М/ф']:
+                        ctg_normalized = 'М/ф'
+                    elif ctg in ['Мс', 'М/с']:
+                        ctg_normalized = 'М/с'
+                    
+                    # Проверяем, разрешена ли категория
+                    if ctg_normalized not in allowed_categories:
+                        continue
+                    
+                    # Проверяем рейтинг ТОЛЬКО для программ, которые попадут в FD_info
+                    if not rating or rating.strip() == '' or rating == '[]':
+                        if channel_id not in channels_without_rating:
+                            channels_without_rating[channel_id] = []
+                        if title not in [p['title'] for p in channels_without_rating[channel_id]]:
+                            channels_without_rating[channel_id].append({
+                                'title': title,
+                                'time': prog.get('start', '')
+                            })
+                    
+                    ctg = self._fix_category(ctg)
                     rating = self._fix_rating(rating)
                     
                     title = self._clean_text(title)
                     prog_lines.append(f"{time} {ctg} {title} {rating}")
                 
+                # Если после фильтрации нет программ - пропускаем канал
+                if not prog_lines:
+                    continue
+                
                 programs_str = "<NL>".join(prog_lines)
-                # Используем отображаемое имя канала
                 line = f"<ST6><AC>На канале {display_name} ({channel_num})<NL>{date_display}<NL><NL>{programs_str}"
                 f.write(line + "\n")
         
+        # Выводим лог ТОЛЬКО по программам, которые попали в FD_info
         if channels_without_rating:
             self.log.emit("")
-            self.log.emit("⚠️ ВНИМАНИЕ! На следующих каналах есть программы без рейтинга:")
+            self.log.emit("⚠️ ВНИМАНИЕ! В сгенерированном FD_info.txt есть программы без рейтинга:")
             self.log.emit("=" * 50)
+            total_without_rating = 0
             for channel_id, progs in channels_without_rating.items():
                 display_name = config.get_channel_name(channel_id)
                 if not display_name or display_name == channel_id:
@@ -217,10 +281,15 @@ class SaveThread(QThread):
                     self.log.emit(f"   {time_str} {prog['title']}")
                 if len(progs) > 3:
                     self.log.emit(f"   ... и еще {len(progs) - 3} программ")
+                total_without_rating += len(progs)
             self.log.emit("=" * 50)
+            self.log.emit(f"📊 Всего программ без рейтинга в FD_info: {total_without_rating}")
             self.log.emit("")
         else:
-            self.log.emit("✅ Все программы имеют рейтинг")
+            self.log.emit("✅ Все программы в FD_info имеют рейтинг")
+        
+        # Дополнительная информация: сколько всего каналов и программ записано
+        self.log.emit(f"📄 Сохранено {len([c for c in sorted_channels if c in programs])} каналов в FD_info.txt")
         
         print(f"✅ Сохранен INFO файл: {path}")
     
@@ -233,14 +302,14 @@ class SaveThread(QThread):
     
     def _fix_category(self, ctg: str) -> str:
         if not ctg:
-            return "Х/ф"
+            return ""
         if '/' in ctg:
             return ctg
-        if ctg == 'Хф' or ctg == 'Хф ' or ctg == 'Х/ф':
+        if ctg == 'Хф' or ctg == 'Хф ':
             return 'Х/ф'
-        elif ctg == 'Тс' or ctg == 'Тс ' or ctg == 'Т/с':
+        elif ctg == 'Тс' or ctg == 'Тс ':
             return 'Т/с'
-        elif ctg == 'Мф' or ctg == 'Мф ' or ctg == 'М/ф':
+        elif ctg == 'Мф' or ctg == 'Мф ':
             return 'М/ф'
         if len(ctg) == 2:
             if ctg[1] == 'ф':
@@ -277,7 +346,7 @@ class SaveThread(QThread):
         return text
     
     def _format_time_for_info(self, time_str: str) -> str:
-        if not time_str or len(time_str) < 12:
+        if not time_str or len(time_str) < 14:
             return ""
         hours = time_str[8:10]
         minutes = time_str[10:12]
@@ -405,6 +474,17 @@ class MainWindow(QMainWindow):
         time_layout.addStretch()
         main_layout.addLayout(time_layout)
         
+        # Строка с сортировкой
+        sort_layout = QHBoxLayout()
+        sort_layout.addWidget(QLabel("📊 Сортировка каналов:"))
+        self.sort_combo = QComboBox()
+        self.sort_combo.addItems(["по week (как в XML)", "по алфавиту", "по номеру канала"])
+        self.sort_combo.setCurrentIndex(0)
+        self.sort_combo.setToolTip("Выберите порядок сортировки каналов в выходных файлах")
+        sort_layout.addWidget(self.sort_combo)
+        sort_layout.addStretch()
+        main_layout.addLayout(sort_layout)
+        
         actions_layout = QHBoxLayout()
         
         self.load_btn = QPushButton("📂 Загрузить week.xml")
@@ -460,6 +540,16 @@ class MainWindow(QMainWindow):
         log_layout.addWidget(self.log_text)
         
         main_layout.addWidget(log_group)
+    
+    def _get_sort_mode(self) -> str:
+        """Возвращает режим сортировки из выпадающего списка"""
+        index = self.sort_combo.currentIndex()
+        if index == 0:
+            return "week"
+        elif index == 1:
+            return "alphabet"
+        else:
+            return "channel"
     
     def _open_channel_manager(self):
         from channel_manager import show_channel_manager
@@ -614,13 +704,19 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Ошибка", "Нет активных каналов. Откройте Управление каналами и включите каналы")
             return
         
+        sort_mode = self._get_sort_mode()
+        sort_names = {"week": "по week", "alphabet": "по алфавиту", "channel": "по номеру"}
+        
         date_str = datetime.now().strftime("%d.%m.%Y")
         filename = f"FD_onairweek{date_str.replace('.', '')}.csv"
         
         self.status_label.setText(f"Сохранение {filename}...")
+        self._log(f"📊 Сортировка: {sort_names.get(sort_mode, 'по week')}")
+        
         self.save_thread = SaveThread(
             self.data, filename, 'csv_week',
-            selected_channels=selected_channels
+            selected_channels=selected_channels,
+            sort_mode=sort_mode
         )
         self.save_thread.log.connect(self._log)
         self.save_thread.finished.connect(lambda path: self._on_save_finished(path, filename))
@@ -637,18 +733,24 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Ошибка", "Нет активных каналов. Откройте Управление каналами и включите каналы")
             return
         
+        sort_mode = self._get_sort_mode()
+        sort_names = {"week": "по week", "alphabet": "по алфавиту", "channel": "по номеру"}
+        
         filename = "FD_info.txt"
         info_date = self._get_info_date()
         time_start = self.time_selector.get_time_start()
         time_end = self.time_selector.get_time_end()
         
         self.status_label.setText(f"Сохранение {filename}...")
+        self._log(f"📊 Сортировка: {sort_names.get(sort_mode, 'по week')}")
+        
         self.save_thread = SaveThread(
             self.data, filename, 'info_day',
             start_date=info_date,
             time_start=time_start,
             time_end=time_end,
-            selected_channels=selected_channels
+            selected_channels=selected_channels,
+            sort_mode=sort_mode
         )
         self.save_thread.log.connect(self._log)
         self.save_thread.finished.connect(lambda path: self._on_save_finished(path, filename))

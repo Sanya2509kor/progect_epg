@@ -36,6 +36,10 @@ class EPGParser:
             start_time = programme.get('start')
             stop_time = programme.get('stop')
             
+            # Коррекция часового пояса
+            start_time = self._fix_timezone(start_time)
+            stop_time = self._fix_timezone(stop_time)
+            
             # Получаем название
             title_elem = programme.find('title')
             title = title_elem.text if title_elem is not None else ""
@@ -53,6 +57,18 @@ class EPGParser:
                 skipped += 1
                 continue
             
+            # Получаем категорию из XML
+            category = ""
+            category_elem = programme.find('category')
+            if category_elem is not None and category_elem.text:
+                category = category_elem.text.strip()
+                if category in ['Хф', 'Х/ф']:
+                    category = 'Х/ф'
+                elif category in ['Тс', 'Т/с']:
+                    category = 'Т/с'
+                elif category in ['Мф', 'М/ф']:
+                    category = 'М/ф'
+            
             # Получаем рейтинг
             rating = self.config.get_rating(title)
             if not rating:
@@ -62,22 +78,17 @@ class EPGParser:
                     if value is not None:
                         rating = value.text
             
-            # Добавляем + к рейтингу если его нет
             if rating and rating.isdigit():
                 rating = f"{rating}+"
             
-            # Получаем название канала
-            # Используем channel_id как основное имя (оно будет в столбце "Название (week.xml)")
-            channel_name = channel_id  # <-- ИСПОЛЬЗУЕМ ID, А НЕ DISPLAY-NAME
+            channel_name = channel_id
             
-            # ===== ПОЛУЧАЕМ НОМЕР СЕРИИ ИЗ SUB-TITLE =====
+            # ===== ПОЛУЧАЕМ НОМЕР СЕРИИ ИЗ SUB-TITLE (ТОЛЬКО ЕСЛИ ЕСТЬ В XML) =====
             sub_title_elem = programme.find('sub-title')
             sub_title = sub_title_elem.text if sub_title_elem is not None else ""
             
+            # Номер серии берем ТОЛЬКО из sub-title, если он там есть
             episode_num = None
-            desc = self._get_description(programme)
-            
-            # 1. Ищем в sub-title (самый надежный источник)
             if sub_title:
                 episode_match = re.search(r'(\d+)-я\s*серия', sub_title, re.IGNORECASE)
                 if episode_match:
@@ -91,40 +102,27 @@ class EPGParser:
                         if episode_match:
                             episode_num = episode_match.group(1)
             
-            # 2. Если не нашли в sub-title — ищем в названии
-            if not episode_num:
-                episode_match = re.search(r'(?:серия|c\.|эпизод|episode|series|season)\s*(\d+)', title, re.IGNORECASE)
-                if episode_match:
-                    episode_num = episode_match.group(1)
-                else:
-                    episode_match = re.search(r'(\d+)\s*(?:серия|с\.|c\.|эпизод)', title, re.IGNORECASE)
-                    if episode_match:
-                        episode_num = episode_match.group(1)
+            # НЕ ищем в названии и описании - только в sub-title!
+            # Это гарантирует, что номера серий будут только там, где они есть в исходном XML
             
-            # 3. Если не нашли — ищем в описании
-            if not episode_num and desc:
-                episode_match = re.search(r'(?:серия|c\.|эпизод)\s*(\d+)', desc, re.IGNORECASE)
-                if episode_match:
-                    episode_num = episode_match.group(1)
-            
-            # ===== ДОБАВЛЯЕМ НОМЕР СЕРИИ В ФОРМАТЕ "N с." =====
+            # ===== ДОБАВЛЯЕМ НОМЕР СЕРИИ ЕСЛИ НАШЛИ =====
             if episode_num:
                 # Убираем старые форматы если они есть
                 title = re.sub(r'\s*c\.\s*\d+', '', title, flags=re.IGNORECASE)
                 title = re.sub(r'\s*серия\s*\d+', '', title, flags=re.IGNORECASE)
                 title = re.sub(r'\s*\([^)]*серия[^)]*\)', '', title, flags=re.IGNORECASE)
-                # Добавляем в формате "номер с."
                 title = f"{title} {episode_num} с."
             
             program_data = {
                 'start': start_time,
                 'stop': stop_time,
-                'channel': channel_name,  # Это channel_id
+                'channel': channel_name,
                 'channel_id': channel_id,
-                'display_name': self.channel_map.get(channel_id, channel_id),  # Сохраняем display-name для отображения
+                'display_name': self.channel_map.get(channel_id, channel_id),
                 'title': title,
+                'category': category,
                 'rating': rating or '',
-                'description': desc,
+                'description': desc if 'desc' in locals() else '',
                 'sub_title': sub_title,
                 'date': start_time[:8] if start_time else ''
             }
@@ -134,51 +132,50 @@ class EPGParser:
             programs_by_channel[channel_name].append(program_data)
             total += 1
         
-        # ===== ДОБАВЛЯЕМ АВТОМАТИЧЕСКУЮ НУМЕРАЦИЮ ДЛЯ ПРОГРАММ БЕЗ НОМЕРА =====
-        programs_by_channel = self._add_episode_numbers(programs_by_channel)
+        # ===== УБИРАЕМ АВТОМАТИЧЕСКУЮ НУМЕРАЦИЮ =====
+        # Больше не добавляем номера серий автоматически
         
         print(f"✅ Загружено {len(programs_by_channel)} каналов, {total} программ (пропущено {skipped})")
         return programs_by_channel
     
-    def _add_episode_numbers(self, programs_by_channel: Dict) -> Dict:
-        """Добавляет номера серий для повторяющихся программ без номеров"""
-        for channel, programs in programs_by_channel.items():
-            # Сортируем по времени
-            programs.sort(key=lambda x: x.get('start', ''))
+    def _fix_timezone(self, time_str: str) -> str:
+        """Исправляет часовой пояс на красноярский (UTC+7)"""
+        if not time_str:
+            return time_str
+        
+        match = re.match(r'(\d{14})\s*([+-]\d{4})?', time_str)
+        if not match:
+            return time_str
+        
+        dt_str = match.group(1)
+        tz_str = match.group(2) or '+0300'
+        
+        try:
+            dt = datetime.strptime(dt_str, '%Y%m%d%H%M%S')
             
-            # Считаем повторяющиеся названия без номеров
-            title_counter = {}
-            for prog in programs:
-                title = prog.get('title', '')
-                # Пропускаем если уже есть номер серии
-                if re.search(r'\d+\s*с\.', title, re.IGNORECASE):
-                    continue
-                # Проверяем, является ли это сериалом (есть sub-title с серией или повторяется)
-                sub_title = prog.get('sub_title', '')
-                is_series = bool(re.search(r'серия', sub_title, re.IGNORECASE)) if sub_title else False
-                
-                # Если есть sub-title с серией — считаем что это сериал
-                if not is_series:
-                    # Если название повторяется больше 2 раз — это сериал
-                    count = sum(1 for p in programs if p.get('title', '') == title and not re.search(r'\d+\s*с\.', p.get('title', ''), re.IGNORECASE))
-                    if count <= 2:
-                        continue
-                
-                if title in title_counter:
-                    title_counter[title] += 1
-                    # Проверяем, не добавили ли уже номер
-                    if not re.search(r'\d+\s*с\.', prog['title'], re.IGNORECASE):
-                        prog['title'] = f"{title} {title_counter[title]} с."
-                else:
-                    title_counter[title] = 1
-        return programs_by_channel
+            if tz_str:
+                tz_hours = int(tz_str[1:3])
+                tz_minutes = int(tz_str[3:5])
+                if tz_str[0] == '-':
+                    tz_hours = -tz_hours
+                tz_offset = timedelta(hours=tz_hours, minutes=tz_minutes)
+            else:
+                tz_offset = timedelta(hours=3)
+            
+            dt_utc = dt - tz_offset
+            dt_kras = dt_utc + timedelta(hours=7)
+            
+            return dt_kras.strftime('%Y%m%d%H%M%S') + ' +0700'
+            
+        except Exception as e:
+            print(f"⚠️ Ошибка преобразования времени {time_str}: {e}")
+            return time_str
     
     def _get_description(self, programme) -> str:
         desc = programme.find('desc')
         return desc.text if desc is not None else ""
     
     def filter_by_date(self, programs_by_channel: Dict, date: datetime) -> Dict:
-        """Фильтрует программы по конкретной дате"""
         date_str = date.strftime('%Y%m%d')
         filtered = {}
         
@@ -194,7 +191,6 @@ class EPGParser:
         return filtered
     
     def filter_by_week(self, programs_by_channel: Dict, start_date: datetime) -> Dict:
-        """Фильтрует программы на неделю (7 дней)"""
         filtered = {}
         date_strs = []
         
@@ -216,35 +212,31 @@ class EPGParser:
         return filtered
     
     def filter_by_channels(self, programs_by_channel: Dict, selected_channels: List[str]) -> Dict:
-        """Фильтрует программы по выбранным каналам"""
         return {ch: prog for ch, prog in programs_by_channel.items() if ch in selected_channels}
     
     def format_time(self, time_str: str) -> str:
         """Форматирует время для CSV: ДДЧЧММ"""
-        if not time_str or len(time_str) < 12:
+        if not time_str or len(time_str) < 14:
             return ""
         day = time_str[6:8]
         hhmm = time_str[8:12]
         return f"{day}{hhmm}"
     
     def detect_category(self, title: str) -> str:
-        """Определяет категорию программы с добавлением слэша"""
         if not title:
-            return "Х/ф"
+            return ""
         
-        # Проверяем по списку фильмов
         for film in self.config.film_list:
             if film['name'] in title and film['type']:
                 ctg = film['type']
                 if ctg == 'Хф':
-                    ctg = 'Х/ф'
+                    return 'Х/ф'
                 elif ctg == 'Тс':
-                    ctg = 'Т/с'
+                    return 'Т/с'
                 elif ctg == 'Мф':
-                    ctg = 'М/ф'
+                    return 'М/ф'
                 return ctg
         
-        # Автоопределение
         title_lower = title.lower()
         if "т/с" in title_lower or "серия" in title_lower or "сезон" in title_lower:
             return "Т/с"
@@ -253,10 +245,9 @@ class EPGParser:
         elif "х/ф" in title_lower:
             return "Х/ф"
         else:
-            return "Х/ф"
+            return ""
     
     def get_program_day(self, program: Dict) -> str:
-        """Возвращает день недели для программы"""
         start = program.get('start', '')
         if len(start) >= 8:
             try:

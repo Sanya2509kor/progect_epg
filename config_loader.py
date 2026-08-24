@@ -40,11 +40,11 @@ class ConfigLoader:
                     if not line or line.startswith('#'):
                         continue
                     parts = line.split('|')
-                    if len(parts) >= 3:  # минимум: xml_name|display_name|number
+                    if len(parts) >= 3:
                         xml_name = parts[0].strip()
                         display_name = parts[1].strip() if len(parts) > 1 else xml_name
                         number = parts[2].strip() if len(parts) > 2 else ""
-                        active = True
+                        active = False
                         if len(parts) >= 4:
                             active = parts[3].strip().lower() == 'true'
                         
@@ -61,7 +61,6 @@ class ConfigLoader:
         """Сохраняет конфигурацию каналов в channel_config.txt"""
         path = os.path.join(self.data_dir, "channel_config.txt")
         try:
-            # Собираем все каналы
             all_channels = set(self.channels_names.keys()) | set(self.channels_numbers.keys())
             
             with open(path, 'w', encoding='utf-8') as f:
@@ -69,7 +68,7 @@ class ConfigLoader:
                 for channel in sorted(all_channels):
                     display_name = self.channels_names.get(channel, channel)
                     number = self.channels_numbers.get(channel, "")
-                    active = self.channels_active.get(channel, True)
+                    active = self.channels_active.get(channel, False)
                     f.write(f"{channel}|{display_name}|{number}|{active}\n")
             print(f"✅ Сохранен channel_config.txt ({len(all_channels)} каналов)")
         except Exception as e:
@@ -99,7 +98,6 @@ class ConfigLoader:
             except (UnicodeDecodeError, UnicodeError):
                 continue
         
-        # Если ничего не помогло
         try:
             with open(path, 'r', encoding='utf-8', errors='ignore') as f:
                 for line in f:
@@ -167,7 +165,7 @@ class ConfigLoader:
             try:
                 with open(path, 'r', encoding=encoding) as f:
                     lines = f.readlines()
-                    if len(lines) > 1:  # Пропускаем заголовок
+                    if len(lines) > 1:
                         for line in lines[1:]:
                             line = line.strip()
                             if not line:
@@ -199,21 +197,19 @@ class ConfigLoader:
         return self.channels_id.get(name, "")
     
     def get_channel_name(self, name: str) -> str:
+        """Возвращает отображаемое название канала"""
         return self.channels_names.get(name, name)
     
     def get_channel_number(self, name: str) -> str:
         return self.channels_numbers.get(name, "")
     
     def is_channel_active(self, name: str) -> bool:
-        """Проверяет, активен ли канал"""
         return self.channels_active.get(name, False)
     
     def get_active_channels(self) -> Dict[str, str]:
-        """Возвращает словарь активных каналов с их номерами"""
         return {ch: num for ch, num in self.channels_numbers.items() if self.is_channel_active(ch)}
     
     def get_rating(self, title: str) -> str:
-        """Получает рейтинг для названия из raiting.txt"""
         if not title:
             return ""
         for name, rating in self.ratings.items():
@@ -222,32 +218,26 @@ class ConfigLoader:
         return ""
     
     def replace_name(self, name: str) -> str:
-        """Применяет все замены к названию"""
         if not name:
             return ""
         
-        # Сначала замены из auto_replace_epg (специальные для EPG)
         for old, new in self.auto_replace_epg.items():
             if old and old in name:
                 name = name.replace(old, new)
         
-        # Затем общие замены из auto_replace
         for old, new in self.auto_replace.items():
             if old and old in name:
                 name = name.replace(old, new)
         
-        # Заменяем <NL> на перенос строки
         if '<NL>' in name:
             name = name.replace('<NL>', '\n')
         
         return name
     
     def is_valid_program(self, title: str) -> bool:
-        """Проверяет, является ли программа валидной"""
         if not title or title.strip() == '':
             return False
         
-        # Список пустых/мусорных названий
         invalid_titles = [
             'Х/ф', 'Т/с', 'М/ф',
             'Х/ф Х/ф', 'Х/ф Х/ф Х/ф',
@@ -259,7 +249,6 @@ class ConfigLoader:
         if title_clean in invalid_titles:
             return False
         
-        # Если название слишком короткое (меньше 3 символов)
         if len(title_clean) < 3:
             return False
         
