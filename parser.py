@@ -81,59 +81,70 @@ class EPGParser:
             if rating and rating.isdigit():
                 rating = f"{rating}+"
             
-            channel_name = channel_id
-            
-            # ===== ПОЛУЧАЕМ НОМЕР СЕРИИ ИЗ SUB-TITLE (ТОЛЬКО ЕСЛИ ЕСТЬ В XML) =====
+            # ===== ПОЛУЧАЕМ SUB-TITLE (название серии) =====
             sub_title_elem = programme.find('sub-title')
             sub_title = sub_title_elem.text if sub_title_elem is not None else ""
-            
-            # Номер серии берем ТОЛЬКО из sub-title, если он там есть
-            episode_num = None
+
+            # ===== ФОРМИРУЕМ НАЗВАНИЕ =====
+            # Очищаем title от старых номеров серий и лишнего
+            title_clean = re.sub(r'\s*\d+\s*с\.', '', title, flags=re.IGNORECASE)
+            title_clean = re.sub(r'\s*\([^)]*серия[^)]*\)', '', title_clean, flags=re.IGNORECASE)
+            title_clean = re.sub(r'\s*с\.\s*\d+', '', title_clean, flags=re.IGNORECASE)
+            title_clean = title_clean.strip()
+
+            final_title = title_clean
+
+            # Если есть sub-title
             if sub_title:
-                episode_match = re.search(r'(\d+)-я\s*серия', sub_title, re.IGNORECASE)
-                if episode_match:
-                    episode_num = episode_match.group(1)
+                # Проверяем на диапазон серий в разных форматах:
+                # "1-я-8-я серии", "1-я - 8-я серии", "1-я - 8-я серия", "1-я-8-я серия"
+                range_match = re.search(r'(\d+)-я\s*[-–]?\s*(\d+)-я\s*сери[яи]', sub_title, re.IGNORECASE)
+                if range_match:
+                    start_num = range_match.group(1)
+                    end_num = range_match.group(2)
+                    final_title = f"{title_clean} {start_num}-{end_num} с."
                 else:
-                    episode_match = re.search(r'(?:серия|c\.|эпизод)\s*(\d+)', sub_title, re.IGNORECASE)
+                    # Проверяем, есть ли в sub-title номер серии
+                    episode_match = re.search(r'(\d+)-я\s*серия', sub_title, re.IGNORECASE)
                     if episode_match:
+                        # Если есть номер серии - берем только номер
                         episode_num = episode_match.group(1)
+                        final_title = f"{title_clean} {episode_num} с."
                     else:
-                        episode_match = re.search(r'(\d+)\s*(?:серия|с\.|c\.|эпизод)', sub_title, re.IGNORECASE)
-                        if episode_match:
-                            episode_num = episode_match.group(1)
-            
-            # НЕ ищем в названии и описании - только в sub-title!
-            # Это гарантирует, что номера серий будут только там, где они есть в исходном XML
-            
-            # ===== ДОБАВЛЯЕМ НОМЕР СЕРИИ ЕСЛИ НАШЛИ =====
-            if episode_num:
-                # Убираем старые форматы если они есть
-                title = re.sub(r'\s*c\.\s*\d+', '', title, flags=re.IGNORECASE)
-                title = re.sub(r'\s*серия\s*\d+', '', title, flags=re.IGNORECASE)
-                title = re.sub(r'\s*\([^)]*серия[^)]*\)', '', title, flags=re.IGNORECASE)
-                title = f"{title} {episode_num} с."
+                        # Нет номера серии - добавляем название серии через точку
+                        # Если sub_title содержит лишние кавычки, убираем их
+                        sub_title_clean = sub_title.strip('"\'')
+                        final_title = f"{title_clean}. {sub_title_clean}"
+            # else:
+            #     # Если нет sub-title, пробуем найти номер серии в title
+            #     episode_match = re.search(r'(\d+)\s*с\.', title, re.IGNORECASE)
+            #     if episode_match:
+            #         episode_num = episode_match.group(1)
+            #         final_title = f"{title_clean} {episode_num} с."
+            #     else:
+            #         episode_match = re.search(r'серия\s*(\d+)', title, re.IGNORECASE)
+            #         if episode_match:
+            #             episode_num = episode_match.group(1)
+            #             final_title = f"{title_clean} {episode_num} с."
             
             program_data = {
                 'start': start_time,
                 'stop': stop_time,
-                'channel': channel_name,
                 'channel_id': channel_id,
                 'display_name': self.channel_map.get(channel_id, channel_id),
-                'title': title,
+                'title': final_title,
                 'category': category,
                 'rating': rating or '',
-                'description': desc if 'desc' in locals() else '',
+                'description': self._get_description(programme),
                 'sub_title': sub_title,
                 'date': start_time[:8] if start_time else ''
             }
             
-            if channel_name not in programs_by_channel:
-                programs_by_channel[channel_name] = []
-            programs_by_channel[channel_name].append(program_data)
+            # Используем channel_id как ключ
+            if channel_id not in programs_by_channel:
+                programs_by_channel[channel_id] = []
+            programs_by_channel[channel_id].append(program_data)
             total += 1
-        
-        # ===== УБИРАЕМ АВТОМАТИЧЕСКУЮ НУМЕРАЦИЮ =====
-        # Больше не добавляем номера серий автоматически
         
         print(f"✅ Загружено {len(programs_by_channel)} каналов, {total} программ (пропущено {skipped})")
         return programs_by_channel
@@ -215,12 +226,15 @@ class EPGParser:
         return {ch: prog for ch, prog in programs_by_channel.items() if ch in selected_channels}
     
     def format_time(self, time_str: str) -> str:
-        """Форматирует время для CSV: ДДЧЧММ"""
-        if not time_str or len(time_str) < 14:
-            return ""
-        day = time_str[6:8]
-        hhmm = time_str[8:12]
-        return f"{day}{hhmm}"
+            """Форматирует время для CSV: ММДДЧЧММ (8 цифр)"""
+            if not time_str or len(time_str) < 14:
+                return ""
+            # time_str: 20260817044500 -> 08 (месяц) + 17 (день) + 04 (часы) + 45 (минуты) = 08170445
+            month = time_str[4:6]    # Месяц (2 цифры)
+            day = time_str[6:8]      # День (2 цифры)
+            hour = time_str[8:10]    # Часы (2 цифры)
+            minute = time_str[10:12] # Минуты (2 цифры)
+            return f"{month}{day}{hour}{minute}"  # 8 цифр: ММДДЧЧММ
     
     def detect_category(self, title: str) -> str:
         if not title:

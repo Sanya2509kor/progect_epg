@@ -16,11 +16,6 @@ class ChannelManagerWindow(QMainWindow):
     
     channels_updated = Signal()
     
-    # Режимы сортировки
-    SORT_BY_WEEK = 0      # Как в week.xml
-    SORT_BY_ALPHABET = 1  # По алфавиту (Название (вывод))
-    SORT_BY_CHANNEL = 2   # По списку каналов (порядок из каналов)
-    
     def __init__(self, config, channels_from_xml: Dict = None, parent=None):
         super().__init__(parent)
         self.setWindowTitle("📡 Управление каналами")
@@ -32,10 +27,6 @@ class ChannelManagerWindow(QMainWindow):
         self.modified = False
         self.config_file = os.path.join("data", "channel_config.txt")
         self._updating_table = False
-        
-        # Порядок каналов из week.xml (сохраняется при загрузке)
-        self.week_order: List[str] = []
-        self.sort_mode = self.SORT_BY_WEEK
         
         self._init_ui()
         self._load_data()
@@ -50,16 +41,6 @@ class ChannelManagerWindow(QMainWindow):
         header = QHBoxLayout()
         header.addWidget(QLabel("📡 Управление каналами"))
         header.addStretch()
-        
-        # Кнопки сортировки
-        self.sort_btn = QPushButton("📊 Сортировка: по week")
-        self.sort_btn.clicked.connect(self._toggle_sort)
-        self.sort_btn.setStyleSheet("background-color: #2196F3; color: white; font-weight: bold;")
-        header.addWidget(self.sort_btn)
-        
-        self.btn_add = QPushButton("➕ Добавить канал")
-        self.btn_add.clicked.connect(self._add_channel)
-        header.addWidget(self.btn_add)
         
         self.btn_add_from_xml = QPushButton("📥 Добавить из week.xml")
         self.btn_add_from_xml.clicked.connect(self._add_from_xml)
@@ -87,10 +68,21 @@ class ChannelManagerWindow(QMainWindow):
         self.table = QTableWidget()
         self.table.setColumnCount(4)
         self.table.setHorizontalHeaderLabels(["Название (week.xml)", "Название (вывод)", "Номер", "Активен"])
-        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        
+        # Устанавливаем минимальные ширины столбцов
+        self.table.horizontalHeader().setMinimumSectionSize(100)
+        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
         self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
+        
+        # Увеличиваем высоту строк
+        self.table.verticalHeader().setDefaultSectionSize(35)
+        
+        # Включаем перенос текста в ячейках
+        self.table.setWordWrap(True)
+        self.table.setTextElideMode(Qt.ElideNone)
+        
         self.table.setAlternatingRowColors(True)
         self.table.itemChanged.connect(self._on_item_changed)
         
@@ -99,15 +91,24 @@ class ChannelManagerWindow(QMainWindow):
         # Поиск
         search_layout = QHBoxLayout()
         search_layout.addWidget(QLabel("🔍 Поиск:"))
+        
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Введите название канала...")
+        self.search_input.setMinimumWidth(400)
+        self.search_input.setMinimumHeight(35)
+        
+        search_font = self.search_input.font()
+        search_font.setPointSize(14)
+        self.search_input.setFont(search_font)
+        
         self.search_input.textChanged.connect(self._filter_channels)
         search_layout.addWidget(self.search_input)
+        search_layout.addStretch()
         main_layout.addLayout(search_layout)
         
         # Инструкция
         help_label = QLabel("💡 Для удаления канала: выделите строку и нажмите Delete")
-        help_label.setStyleSheet("color: gray; font-size: 9px;")
+        help_label.setStyleSheet("color: gray; font-size: 11px;")
         main_layout.addWidget(help_label)
         
         self.setStyleSheet("""
@@ -116,55 +117,66 @@ class ChannelManagerWindow(QMainWindow):
                 color: white;
             }
             QTableWidget::item {
+                padding: 8px 5px;
+                font-size: 13px;
+            }
+            QTableWidget {
+                font-size: 13px;
+                gridline-color: #d0d0d0;
+            }
+            QHeaderView::section {
+                background-color: #f0f0f0;
                 padding: 5px;
+                font-size: 13px;
+                font-weight: bold;
             }
             QPushButton {
-                padding: 5px 10px;
+                padding: 8px 15px;
                 border-radius: 3px;
+                font-size: 13px;
             }
             QPushButton:hover {
                 background: #e0e0e0;
             }
             QLineEdit {
-                padding: 5px;
-                border: 1px solid #ccc;
+                padding: 8px 12px;
+                border: 2px solid #888;
+                border-radius: 4px;
+                font-size: 14px;
+                color: #000000;
+                background-color: #FFFFFF;
+                selection-background-color: #0078D7;
+                selection-color: #FFFFFF;
+            }
+            QLineEdit:focus {
+                border: 2px solid #0078D7;
+            }
+            QLabel {
+                font-size: 13px;
+                color: #000000;
+            }
+            QCheckBox {
+                font-size: 13px;
+            }
+            /* Стиль для редактора ячеек при двойном клике */
+            QTableWidget QLineEdit {
+                padding: 20px 8px;
+                border: 2px solid #0078D7;
                 border-radius: 3px;
+                font-size: 14px;
+                color: #000000;
+                background-color: #FFFFFF;
+                selection-background-color: #0078D7;
+                selection-color: #FFFFFF;
+            }
+            QTableWidget QLineEdit:focus {
+                border: 2px solid #0078D7;
+                background-color: #FFFFFF;
             }
         """)
         
         self.table.setFocusPolicy(Qt.StrongFocus)
         self.table.keyPressEvent = self._on_key_press
-    
-    def _toggle_sort(self):
-        """Переключает режим сортировки"""
-        self.sort_mode = (self.sort_mode + 1) % 3
-        
-        if self.sort_mode == self.SORT_BY_WEEK:
-            self.sort_btn.setText("📊 Сортировка: по week")
-            self.sort_btn.setStyleSheet("background-color: #2196F3; color: white; font-weight: bold;")
-        elif self.sort_mode == self.SORT_BY_ALPHABET:
-            self.sort_btn.setText("📊 Сортировка: по алфавиту")
-            self.sort_btn.setStyleSheet("background-color: #FF9800; color: white; font-weight: bold;")
-        else:
-            self.sort_btn.setText("📊 Сортировка: по списку")
-            self.sort_btn.setStyleSheet("background-color: #9C27B0; color: white; font-weight: bold;")
-        
-        self._sort_channels()
-        self._update_table()
-    
-    def _sort_channels(self):
-        """Сортирует каналы согласно текущему режиму"""
-        if self.sort_mode == self.SORT_BY_WEEK:
-            # Сортировка по порядку из week.xml
-            if self.week_order:
-                order_map = {name: idx for idx, name in enumerate(self.week_order)}
-                self.channels.sort(key=lambda x: order_map.get(x['xml_name'], len(self.week_order)))
-        elif self.sort_mode == self.SORT_BY_ALPHABET:
-            # Сортировка по алфавиту (по отображаемому имени)
-            self.channels.sort(key=lambda x: x['display_name'].lower())
-        else:  # SORT_BY_CHANNEL
-            # Сортировка по списку каналов (по номеру канала, числовое значение)
-            self.channels.sort(key=lambda x: int(x['number']) if x['number'] and x['number'].isdigit() else 9999)
     
     def _on_key_press(self, event):
         if event.key() == Qt.Key_Delete:
@@ -175,7 +187,6 @@ class ChannelManagerWindow(QMainWindow):
     def _load_data(self):
         """Загружает данные из channel_config.txt"""
         self.channels = []
-        self.week_order = []
         
         # Пробуем загрузить из файла
         if os.path.exists(self.config_file):
@@ -206,8 +217,8 @@ class ChannelManagerWindow(QMainWindow):
         # Добавляем каналы из XML, которых нет в списке (с active=False)
         self._add_missing_from_xml()
         
-        # Сортируем
-        self._sort_channels()
+        # Сортируем по алфавиту (по отображаемому имени)
+        self.channels.sort(key=lambda x: x['display_name'].lower())
         
         self._update_table()
         self._update_info()
@@ -220,10 +231,7 @@ class ChannelManagerWindow(QMainWindow):
         existing = {c['xml_name'] for c in self.channels}
         added = 0
         
-        for xml_name in sorted(self.channels_from_xml.keys()):
-            # Сохраняем порядок из week.xml
-            self.week_order.append(xml_name)
-            
+        for xml_name in self.channels_from_xml.keys():
             if xml_name not in existing:
                 display_name = xml_name
                 programs = self.channels_from_xml.get(xml_name, [])
@@ -246,7 +254,24 @@ class ChannelManagerWindow(QMainWindow):
         """Обновляет таблицу (4 столбца)"""
         self._updating_table = True
         self.table.blockSignals(True)
+        
+        # Сохраняем режимы растяжения столбцов
+        stretch_modes = []
+        for col in range(self.table.columnCount()):
+            stretch_modes.append(self.table.horizontalHeader().sectionResizeMode(col))
+        
+        # Сохраняем текущие ширины столбцов
+        column_widths = []
+        total_width = self.table.width()
+        for col in range(self.table.columnCount()):
+            column_widths.append(self.table.columnWidth(col))
+        
         self.table.setRowCount(0)
+        
+        # Устанавливаем шрифт для таблицы
+        font = self.table.font()
+        font.setPointSize(12)
+        self.table.setFont(font)
         
         for row, channel in enumerate(self.channels):
             self.table.insertRow(row)
@@ -254,15 +279,18 @@ class ChannelManagerWindow(QMainWindow):
             # Название из week.xml (НЕ РЕДАКТИРУЕТСЯ) - channel id
             xml_item = QTableWidgetItem(channel.get('xml_name', ''))
             xml_item.setFlags(xml_item.flags() & ~Qt.ItemIsEditable)
+            xml_item.setFont(font)
             self.table.setItem(row, 0, xml_item)
             
             # Название для вывода (редактируемое)
             display_item = QTableWidgetItem(channel.get('display_name', ''))
+            display_item.setFont(font)
             self.table.setItem(row, 1, display_item)
             
             # Номер (редактируемый)
             num_item = QTableWidgetItem(channel.get('number', ''))
             num_item.setTextAlignment(Qt.AlignCenter)
+            num_item.setFont(font)
             self.table.setItem(row, 2, num_item)
             
             # Активен (чекбокс)
@@ -283,9 +311,18 @@ class ChannelManagerWindow(QMainWindow):
                         item.setBackground(QBrush(QColor(240, 240, 240)))
                         item.setForeground(QBrush(QColor(150, 150, 150)))
         
+        # Восстанавливаем ширины столбцов
+        for col, width in enumerate(column_widths):
+            if width > 50:  # Не восстанавливаем слишком маленькие ширины
+                self.table.setColumnWidth(col, width)
+        
+        # Восстанавливаем режимы растяжения
+        for col, mode in enumerate(stretch_modes):
+            self.table.horizontalHeader().setSectionResizeMode(col, mode)
+        
         self.table.blockSignals(False)
         self._updating_table = False
-        self.table.resizeColumnsToContents()
+        self.table.resizeRowsToContents()
     
     def _on_active_changed(self, state, row):
         """Обработчик изменения состояния чекбокса"""
@@ -329,61 +366,13 @@ class ChannelManagerWindow(QMainWindow):
         row = item.row()
         col = item.column()
         
-        if col == 1:
+        if col == 1:  # display_name
             self.channels[row]['display_name'] = item.text().strip()
             self.modified = True
-            # После изменения названия, если сортировка по алфавиту, пересортируем
-            if self.sort_mode == self.SORT_BY_ALPHABET:
-                self._sort_channels()
-                self._update_table()
-        elif col == 2:
+        elif col == 2:  # number
             self.channels[row]['number'] = item.text().strip()
             self.modified = True
             self._update_info()
-            # После изменения номера, если сортировка по списку, пересортируем
-            if self.sort_mode == self.SORT_BY_CHANNEL:
-                self._sort_channels()
-                self._update_table()
-    
-    def _add_channel(self):
-        xml_name, ok = QInputDialog.getText(
-            self, "Добавить канал",
-            "Введите название канала (как в week.xml):"
-        )
-        if not ok or not xml_name:
-            return
-        
-        xml_name = xml_name.strip()
-        
-        for c in self.channels:
-            if c['xml_name'] == xml_name:
-                QMessageBox.warning(self, "Ошибка", f"Канал '{xml_name}' уже существует")
-                return
-        
-        display_name, ok = QInputDialog.getText(
-            self, "Название для вывода",
-            f"Введите название для отображения канала '{xml_name}':"
-        )
-        if not ok:
-            display_name = xml_name
-        
-        number, ok = QInputDialog.getText(
-            self, "Номер канала",
-            f"Введите номер для канала '{xml_name}':"
-        )
-        
-        self.channels.append({
-            'xml_name': xml_name,
-            'display_name': display_name.strip() if display_name else xml_name,
-            'number': number.strip() if ok else '',
-            'active': False
-        })
-        self.modified = True
-        
-        self._sort_channels()
-        self._update_table()
-        self._update_info()
-        self._scroll_to_channel(xml_name)
     
     def _add_from_xml(self):
         if not self.channels_from_xml:
@@ -410,7 +399,7 @@ class ChannelManagerWindow(QMainWindow):
         
         if added > 0:
             self.modified = True
-            self._sort_channels()
+            self.channels.sort(key=lambda x: x['display_name'].lower())
             self._update_table()
             self._update_info()
             QMessageBox.information(self, "Готово", f"Добавлено {added} новых каналов (по умолчанию неактивны)")
@@ -428,12 +417,20 @@ class ChannelManagerWindow(QMainWindow):
         
         xml_name = xml_item.text()
         
-        reply = QMessageBox.question(
-            self, "Подтверждение",
-            f"Удалить канал '{xml_name}'?",
-            QMessageBox.Yes | QMessageBox.No
-        )
-        if reply == QMessageBox.Yes:
+        msg_box = QMessageBox(self)
+        msg_box.setWindowTitle("Подтверждение")
+        msg_box.setText(f"Удалить канал '{xml_name}'?")
+        msg_box.setIcon(QMessageBox.Question)
+        
+        # Создаем кнопки с русскими надписями
+        btn_yes = msg_box.addButton("🗑️ Да, удалить", QMessageBox.YesRole)
+        btn_no = msg_box.addButton("❌ Отмена", QMessageBox.NoRole)
+        
+        msg_box.setDefaultButton(btn_no)
+        
+        msg_box.exec()
+        
+        if msg_box.clickedButton() == btn_yes:
             del self.channels[row]
             self.modified = True
             self._update_table()
@@ -518,17 +515,28 @@ class ChannelManagerWindow(QMainWindow):
     
     def closeEvent(self, event):
         if self.modified:
-            reply = QMessageBox.question(
-                self, "Несохраненные изменения",
-                "У вас есть несохраненные изменения. Сохранить перед выходом?",
-                QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel
-            )
-            if reply == QMessageBox.Yes:
+            msg_box = QMessageBox(self)
+            msg_box.setWindowTitle("Несохраненные изменения")
+            msg_box.setText("У вас есть несохраненные изменения. Сохранить перед выходом?")
+            msg_box.setIcon(QMessageBox.Question)
+            
+            # Создаем кнопки с русскими надписями
+            btn_save = msg_box.addButton("💾 Сохранить", QMessageBox.YesRole)
+            btn_dont_save = msg_box.addButton("✖ Не сохранять", QMessageBox.NoRole)
+            btn_cancel = msg_box.addButton("↩ Отмена", QMessageBox.RejectRole)
+            
+            msg_box.setDefaultButton(btn_save)
+            
+            msg_box.exec()
+            
+            clicked_button = msg_box.clickedButton()
+            
+            if clicked_button == btn_save:
                 self._save_channels()
                 event.accept()
-            elif reply == QMessageBox.No:
+            elif clicked_button == btn_dont_save:
                 event.accept()
-            else:
+            else:  # Отмена
                 event.ignore()
         else:
             event.accept()

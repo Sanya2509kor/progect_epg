@@ -1,152 +1,152 @@
 # Название из week|Название для вывода|Номер канала|Активен
-1TV_O3|Первый||False
+SonyTurbo|.Black|86|True
+SET_RUSSIA|.Red|85|True
+AXNSciFi|.Sci-Fi|82|True
 365_day|365 дней ТВ|129|True
 Amedia1|Amedia 1|80|True
 AmediaHit|Amedia Hit|78|True
 AmediaPRSD|Amedia Premium|77|True
-Appeti|Аппетитный||False
-autoplus|Авто Плюс||False
-Avto24|Авто24||False
-AXNSciFi|.Sci-Fi|82|True
 BigPlanet|Big Planet||False
-Blokbaster|Блокбастер|68|True
-boets|МАТЧ! БОЕЦ||False
-Bolt|BOLT|100|True
-BoxingTV|Бокс ТВ||False
-Che7|Че!||False
+Bolt|BOLT|100|False
+TV1000Come|Comedy|91|True
 CuriosityS|CuriosityStream||False
-Detmir24|Детский мир||False
-DOMASHNIY|Домашний||False
-DomKino|Дом кино|55|True
-DomKinoP|Дом Кино Премиум|75|True
-Dorama|Дорама||False
-DOVERIE|Москва. Доверие|73|True
-Drive_MTU|Драйв||False
-epg_15_08|Поехали!||False
-epg_16_01|Киносвидание|38|True
-epg_16_02|Кинохит|40|True
-epg_16_03|Киносемья|34|True
-epg_16_05|Бобер||False
-epg_22_05|СуперГерои||False
-epg_23_05|Уникум||False
-epg_23_06|Дикий||False
 Explorer|Explore||False
-Feniks|Феникс+Кино|57|True
-Friday+4|Пятница||False
-Galaxy_TV|Тайны Галактики||False
-GivPlaneta|Живая планета||False
+ntv+23|Extreme||False
 History|History||False
-ILLUSION+|Иллюзион +||False
-India|Индийское кино|58|True
-Istoria|История||False
-Jivi-v|Живи HD||False
-Karusel_4|Карусель||False
-kineko|Кинеко||False
-KinipokaSD|Кинопоказ|33|True
+ntv+9|KHL|106|False
 KINOJAM1|KinoJam 1|79|True
 KINOJAM2|KinoJam 2|76|True
-KinoLiving|KINOLIVING|1|True
-Kinop_HD-1|Шокирующее HD|96|True
-kinoprem|Кинопремьера|43|True
-KinoPrHD|Премиальное HD|94|True
-KinoTV|КиноТВ|63|True
-kinouzhas|Киноужас|70|True
-Komedia|Кинокомедия|64|True
-KrasLin|Красная линия|137|True
-KtoKuda|КтоКуда||False
-Kuhna_hd|Кухня ТВ HD||False
-KUL_D2Y|Культура||False
-MatchareHD|МАТЧ! АРЕНА HD||False
-MatchigrHD|МАТЧ! ИГРА HD||False
-MatchTV|Матч!|3|True
-MenKino|Мужское кино|42|True
-Mir4|МИР+4||False
-Mir_serial|Мир сериала|59|True
-mnogoTV|Киносерия|60|True
-MosfilmZol|Золотая коллекция|37|True
-Mother|Мама||False
-MPremHD|МАТЧ! ПРЕМЬЕР HD||False
-Mstrana|МАТЧ! СТРАНА||False
-Mult|МУЛЬТ||False
-Multimania|Мультиландия||False
-Muzhskoj|Мужской||False
-My_Planet|Моя Планета||False
-Nash_KinSD|Наш Кинопоказ|72|True
-Nashe_MySD|Наше Мужское|84|True
-NasheLub-2|Любимое|74|True
+KinoLiving|KINOLIVING|1|False
+TV1000Mega|Megahit|90|True
 Nature_CEE|Nature||False
-Nauka_2.0|Наука||False
-NSTV|НСТ|44|True
-ntv+23|Extreme||False
-ntv+3|Родное кино|54|True
-ntv+34|Киномикс|39|True
-ntv+7|Наше новое кино|56|True
-ntv+9|KHL|106|True
-NTV_S4|НТВ||False
-NTVHit|НТВ Хит|88|True
-O|О!||False
 OCEAN-TV_K|Ocean TV - Красноярск||False
-OstroSD-2|Остросюжетное|35|True
-OTR3|Общественное телевидение России||False
-Patriot|Патриот||False
-PervVegeta|Первый вегетарианский||False
-Piter5or4V|Пятый канал|5|True
 PlanB|Plan B||False
-Pobeda|Победа|36|True
-Pro_Lubov|Про Любовь|81|True
-Radost_moj|Радость Моя||False
-RenKrJarsk|РЕН ТВ  (Красноярск)||False
-Retro_MTU|Ретро|65|True
-ROMANCE|VESNA||False
+TV1000Prem|Premiere|89|True
 RTG_TV|Russian Travel Guide||False
-RTR_D3|Россия 1||False
-RTVi-LK|Наше любимое кино|53|True
-RU_ILLusio|Русский Иллюзион|51|True
-RuDetektiv|Русский Детектив|49|True
-Rus-Bestst|Русский бестселлер|50|True
-RusRoman|Русский роман|48|True
-sapfir|Сапфир||False
-sarafan-tv|Сарафан||False
-SET_RUSSIA|.Red|85|True
-SonyTurbo|.Black|86|True
-sovetclas3|Советская киноклассика|66|True
-SPAS|Спас ТВ||False
 Starcinema|Star Cinema||False
 STARTAir|START Air|67|True
 STARTWorld|START World|69|True
+TERRA|TERRA||False
+Travel+Adv|Travel+Adventure||False
+TV1000|TV1000|46|True
+TV1000ActV|TV1000 action|41|True
+vijTV1000R|TV1000 romantica||False
+TV1000_RK|TV1000 русское|47|True
+ROMANCE|VESNA||False
+Zoopark|Zooпарк||False
+autoplus|Авто Плюс||False
+Avto24|Авто24||False
+Appeti|Аппетитный||False
+Blokbaster|Блокбастер|68|True
+epg_16_05|Бобер||False
+BoxingTV|Бокс ТВ||False
+Vgostskaz|В гостях у сказки||False
+Vremya|Время|97|True
+Detmir24|Детский мир||False
+epg_23_06|Дикий||False
+DomKino|Дом кино|55|True
+DomKinoP|Дом Кино Премиум|75|True
+DOMASHNIY|Домашний||False
+Dorama|Дорама||False
+Drive_MTU|Драйв||False
+ZVEZDKr-sk|Енисей||False
+WM|Женский Журнал||False
+GivPlaneta|Живая планета||False
+Jivi-v|Живи HD||False
+Zagorod_zh|Загородная жизнь||False
+ZVEZDAOrb4|Звезда|17|True
+zvezdaPlus|Звезда Плюс||False
+Zdorov_MTU|Здоровое ТВ||False
+MosfilmZol|Золотая коллекция|37|True
+ILLUSION+|Иллюзион +||False
+India|Индийское кино|58|True
+Zee-TV|Индия|71|True
+Istoria|История||False
+Karusel_4|Карусель||False
+kineko|Кинеко||False
+Komedia|Кинокомедия|64|True
+ntv+34|Киномикс|39|True
+KinipokaSD|Кинопоказ|33|True
+kinoprem|Кинопремьера|43|True
+epg_16_01|Киносвидание|38|True
+epg_16_03|Киносемья|34|True
+mnogoTV|Киносерия|60|True
+KinoTV|КиноТВ|63|True
+kinouzhas|Киноужас|70|True
+epg_16_02|Кинохит|40|True
+KrasLin|Красная линия|137|True
+Who_is_who|Кто есть кто||False
+KtoKuda|КтоКуда||False
+KUL_D2Y|Культура||False
+Kuhna_hd|Кухня ТВ HD||False
+NasheLub-2|Любимое|74|True
+Mother|Мама||False
+MatchTV|Матч!|3|False
+MatchareHD|МАТЧ! АРЕНА HD||False
+boets|МАТЧ! БОЕЦ||False
+MatchigrHD|МАТЧ! ИГРА HD||False
+MPremHD|МАТЧ! ПРЕМЬЕР HD||False
+Mstrana|МАТЧ! СТРАНА||False
+Mir_serial|Мир сериала|59|True
+Mir4|МИР+4||False
+DOVERIE|Москва. Доверие|73|True
+My_Planet|Моя Планета||False
+MenKino|Мужское кино|42|True
+Muzhskoj|Мужской||False
+Mult|МУЛЬТ||False
+Multimania|Мультиландия||False
+Nauka_2.0|Наука||False
+Nash_KinSD|Наш Кинопоказ|72|True
+RTVi-LK|Наше любимое кино|53|True
+Nashe_MySD|Наше Мужское|84|True
+ntv+7|Наше новое кино|56|True
+NSTV|НСТ|44|True
+NTV_S4|НТВ||False
+NTVHit|НТВ Хит|88|True
+O|О!||False
+OTR3|Общественное телевидение России||False
+Weapons|Оружие||False
+OstroSD-2|Остросюжетное|35|True
+Patriot|Патриот||False
+1TV_O3|Первый||False
+PervVegeta|Первый вегетарианский||False
+Pobeda|Победа|36|True
+epg_15_08|Поехали!||False
+KinoPrHD|Премиальное HD|94|True
+Pro_Lubov|Про Любовь|81|True
+Friday+4|Пятница||False
+Piter5or4V|Пятый канал|5|True
+Radost_moj|Радость Моя||False
+RenKrJarsk|РЕН ТВ  (Красноярск)||False
+Retro_MTU|Ретро|65|True
+ntv+3|Родное кино|54|True
+RTR_D3|Россия 1||False
+vesti24|Россия 24||False
+Rus-Bestst|Русский бестселлер|50|True
+RuDetektiv|Русский Детектив|49|True
+RU_ILLusio|Русский Иллюзион|51|True
+RusRoman|Русский роман|48|True
+sapfir|Сапфир||False
+sarafan-tv|Сарафан||False
+Top_secret|Совершенно секретно||False
+sovetclas3|Советская киноклассика|66|True
+SPAS|Спас ТВ||False
 STS-Krasny|СТС|13|True
 STSLove4|СТС Love||False
-Tehno24|Техно 24|110|True
+epg_22_05|СуперГерои||False
+Galaxy_TV|Тайны Галактики||False
+TVC_Krasno|ТВ Центр|10|True
+TV3+4|ТВ-3||False
+TV21|ТВ21|45|True
 Telekafe|Телекафе|93|True
 Teletravel|Телепутешествия||False
-TERRA|TERRA||False
+Tehno24|Техно 24|110|True
 TNT+4|ТНТ||False
 TNT4_4|ТНТ4||False
 TochkaOtr|Точка отрыва||False
-Top_secret|Совершенно секретно||False
-Travel+Adv|Travel+Adventure||False
-TV1000|TV1000|46|True
-TV1000_RK|TV1000 русское|47|True
-TV1000ActV|TV1000 action|41|True
-TV1000Come|Comedy|91|True
-TV1000Mega|Megahit|90|True
-TV1000Prem|Premiere|89|True
-TV21|ТВ21|45|True
-TV3+4|ТВ-3||False
-TVC_Krasno|ТВ Центр|10|True
-U_(+7)|Ю||False
+epg_23_05|Уникум||False
 Usadba_MTU|Усадьба||False
-vesti24|Россия 24||False
-Vgostskaz|В гостях у сказки||False
-vijTV1000R|TV1000 romantica||False
-Vremya|Время|97|True
-Weapons|Оружие||False
-Who_is_who|Кто есть кто||False
-WM|Женский Журнал||False
-Zagorod_zh|Загородная жизнь||False
-Zdorov_MTU|Здоровое ТВ||False
-Zee-TV|Индия|71|True
-Zoopark|Zooпарк||False
-ZVEZDAOrb4|Звезда|17|True
-zvezdaPlus|Звезда Плюс||False
-ZVEZDKr-sk|Енисей||False
+Feniks|Феникс+Кино|57|True
+Che7|Че!||False
+Kinop_HD-1|Шокирующее HD|96|True
+U_(+7)|Ю||False

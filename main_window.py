@@ -122,7 +122,7 @@ class SaveThread(QThread):
         # Получаем отсортированный список каналов
         sorted_channels = self._get_sorted_channels(programs)
         
-        with open(path, 'w', encoding='utf-8') as f:
+        with open(path, 'w', encoding='windows-1251') as f:
             f.write("Start;Stop;Chanel;Num;Ctg;NameSer;Ratio\n")
             
             for channel_id in sorted_channels:
@@ -442,7 +442,7 @@ class MainWindow(QMainWindow):
         info_date_layout = QHBoxLayout()
         info_date_layout.addWidget(QLabel("Дата для INFO:"))
         
-        self.btn_info_yesterday = QPushButton("←")
+        self.btn_info_yesterday = QPushButton("Вчера")
         self.btn_info_yesterday.clicked.connect(lambda: self._set_info_date(-1))
         info_date_layout.addWidget(self.btn_info_yesterday)
         
@@ -491,12 +491,12 @@ class MainWindow(QMainWindow):
         self.load_btn.clicked.connect(self._load_xml)
         actions_layout.addWidget(self.load_btn)
         
-        self.save_csv_btn = QPushButton("💾 Сохранить CSV (неделя)")
+        self.save_csv_btn = QPushButton("💾 Сохранить FD_onair(неделя)")
         self.save_csv_btn.clicked.connect(self._save_csv_week)
         self.save_csv_btn.setEnabled(False)
         actions_layout.addWidget(self.save_csv_btn)
         
-        self.save_info_btn = QPushButton("📄 Сохранить INFO (день)")
+        self.save_info_btn = QPushButton("📄 Сохранить FD_INFO(день)")
         self.save_info_btn.clicked.connect(self._save_info_day)
         self.save_info_btn.setEnabled(False)
         actions_layout.addWidget(self.save_info_btn)
@@ -506,10 +506,10 @@ class MainWindow(QMainWindow):
         self.save_all_btn.setEnabled(False)
         actions_layout.addWidget(self.save_all_btn)
         
-        self.edit_info_btn = QPushButton("📝 Редактировать FD_info")
-        self.edit_info_btn.clicked.connect(self._open_editor)
-        self.edit_info_btn.setEnabled(False)
-        actions_layout.addWidget(self.edit_info_btn)
+        # self.edit_info_btn = QPushButton("📝 Редактировать FD_info")
+        # self.edit_info_btn.clicked.connect(self._open_editor)
+        # self.edit_info_btn.setEnabled(False)
+        # actions_layout.addWidget(self.edit_info_btn)
         
         self.manage_channels_btn = QPushButton("📡 Управление каналами")
         self.manage_channels_btn.clicked.connect(self._open_channel_manager)
@@ -575,7 +575,7 @@ class MainWindow(QMainWindow):
             self.save_csv_btn.setEnabled(True)
             self.save_info_btn.setEnabled(True)
             self.save_all_btn.setEnabled(True)
-            self.edit_info_btn.setEnabled(True)
+            # self.edit_info_btn.setEnabled(True)
         else:
             self._channels_loaded = False
             self.save_csv_btn.setEnabled(False)
@@ -699,6 +699,7 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Ошибка", "Сначала загрузите week.xml")
             return
         
+        # Получаем ТОЛЬКО активные каналы
         selected_channels = list(self.config.get_active_channels().keys())
         if not selected_channels:
             QMessageBox.warning(self, "Ошибка", "Нет активных каналов. Откройте Управление каналами и включите каналы")
@@ -707,11 +708,14 @@ class MainWindow(QMainWindow):
         sort_mode = self._get_sort_mode()
         sort_names = {"week": "по week", "alphabet": "по алфавиту", "channel": "по номеру"}
         
-        date_str = datetime.now().strftime("%d.%m.%Y")
+        # Используем выбранную пользователем дату для имени файла
+        info_date = self._get_info_date()
+        date_str = info_date.strftime("%d.%m.%Y")
         filename = f"FD_onairweek{date_str.replace('.', '')}.csv"
         
         self.status_label.setText(f"Сохранение {filename}...")
-        self._log(f"📊 Сортировка: {sort_names.get(sort_mode, 'по week')}")
+        self._log(f"📅 Дата для CSV: {date_str}")
+        self._log(f"📊 Сортировка CSV: {sort_names.get(sort_mode, 'по week')}")
         
         self.save_thread = SaveThread(
             self.data, filename, 'csv_week',
@@ -758,6 +762,21 @@ class MainWindow(QMainWindow):
         self.save_thread.start()
     
     def _save_all(self):
+        """Сохраняет оба файла"""
+        if not self.data:
+            QMessageBox.warning(self, "Ошибка", "Сначала загрузите week.xml")
+            return
+        
+        # Проверяем наличие активных каналов
+        selected_channels = list(self.config.get_active_channels().keys())
+        if not selected_channels:
+            QMessageBox.warning(self, "Ошибка", "Нет активных каналов. Откройте Управление каналами и включите каналы")
+            return
+        
+        sort_mode = self._get_sort_mode()
+        sort_names = {"week": "по week", "alphabet": "по алфавиту", "channel": "по номеру"}
+        self._log(f"📊 Сортировка для обоих файлов: {sort_names.get(sort_mode, 'по week')}")
+        
         self._save_csv_week()
         import time
         time.sleep(0.5)

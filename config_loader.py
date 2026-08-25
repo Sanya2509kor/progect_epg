@@ -23,8 +23,7 @@ class ConfigLoader:
         # Загружаем остальные файлы
         self._load_key_value("avtozamena.txt", self.auto_replace)
         self._load_key_value("avtozamenaEPG.txt", self.auto_replace_epg)
-        self._load_film_list()
-        self._load_ratings()
+        
     
     def _load_channel_config(self):
         """Загружает каналы из channel_config.txt"""
@@ -109,89 +108,6 @@ class ConfigLoader:
         except Exception as e:
             print(f"❌ Не удалось загрузить {filename}: {e}")
     
-    def _load_film_list(self):
-        """Загружает список фильмов из Новый текстовый документ.txt"""
-        path = os.path.join(self.data_dir, "Новый текстовый документ.txt")
-        if not os.path.exists(path):
-            return
-        
-        encodings = ['utf-8', 'cp1251', 'windows-1251', 'koi8-r']
-        
-        for encoding in encodings:
-            try:
-                with open(path, 'r', encoding=encoding) as f:
-                    for line in f:
-                        line = line.strip()
-                        if not line:
-                            continue
-                        parts = line.split(';')
-                        if len(parts) >= 3:
-                            self.film_list.append({
-                                'type': parts[0].strip(),
-                                'name': parts[1].strip('"'),
-                                'rating': parts[2].strip()
-                            })
-                print(f"✅ Загружен Новый текстовый документ.txt (кодировка: {encoding})")
-                return
-            except (UnicodeDecodeError, UnicodeError):
-                continue
-        
-        try:
-            with open(path, 'r', encoding='utf-8', errors='ignore') as f:
-                for line in f:
-                    line = line.strip()
-                    if not line:
-                        continue
-                    parts = line.split(';')
-                    if len(parts) >= 3:
-                        self.film_list.append({
-                            'type': parts[0].strip(),
-                            'name': parts[1].strip('"'),
-                            'rating': parts[2].strip()
-                        })
-            print(f"⚠️ Загружен Новый текстовый документ.txt (с пропуском ошибок)")
-        except Exception as e:
-            print(f"❌ Не удалось загрузить Новый текстовый документ.txt: {e}")
-    
-    def _load_ratings(self):
-        """Загружает рейтинги из raiting.txt"""
-        path = os.path.join(self.data_dir, "raiting.txt")
-        if not os.path.exists(path):
-            return
-        
-        encodings = ['utf-8', 'cp1251', 'windows-1251', 'koi8-r']
-        
-        for encoding in encodings:
-            try:
-                with open(path, 'r', encoding=encoding) as f:
-                    lines = f.readlines()
-                    if len(lines) > 1:
-                        for line in lines[1:]:
-                            line = line.strip()
-                            if not line:
-                                continue
-                            parts = line.split(';')
-                            if len(parts) >= 3:
-                                self.ratings[parts[1].strip()] = parts[2].strip()
-                print(f"✅ Загружен raiting.txt (кодировка: {encoding})")
-                return
-            except (UnicodeDecodeError, UnicodeError):
-                continue
-        
-        try:
-            with open(path, 'r', encoding='utf-8', errors='ignore') as f:
-                lines = f.readlines()
-                if len(lines) > 1:
-                    for line in lines[1:]:
-                        line = line.strip()
-                        if not line:
-                            continue
-                        parts = line.split(';')
-                        if len(parts) >= 3:
-                            self.ratings[parts[1].strip()] = parts[2].strip()
-            print(f"⚠️ Загружен raiting.txt (с пропуском ошибок)")
-        except Exception as e:
-            print(f"❌ Не удалось загрузить raiting.txt: {e}")
     
     def get_channel_id(self, name: str) -> str:
         return self.channels_id.get(name, "")
